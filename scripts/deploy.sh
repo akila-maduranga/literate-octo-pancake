@@ -22,17 +22,15 @@ echo -e "${NC}"
 
 # ── 1. Check prerequisites ────────────────────────────────────
 info "Checking prerequisites..."
-command -v docker      >/dev/null 2>&1 || error "Docker not installed. Install: https://docs.docker.com/engine/install/"
+command -v docker      >/dev/null 2>&1 || error "Docker not installed. Install: curl -fsSL https://get.docker.com | sh"
 command -v git         >/dev/null 2>&1 || error "Git not installed. Run: apt-get install git"
-docker compose version >/dev/null 2>&1 || error "Docker Compose v2 not found. Update Docker Desktop or install plugin."
+docker compose version >/dev/null 2>&1 || error "Docker Compose v2 not found. Update Docker: curl -fsSL https://get.docker.com | sh"
 success "All prerequisites met."
 
 # ── 2. Setup .env ─────────────────────────────────────────────
 if [ ! -f .env ]; then
   info "Creating .env from template..."
   cp .env.example .env
-
-  # Auto-generate a secure FLOOD_SECRET
   SECRET=$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 48)
   sed -i "s/change_me_to_a_long_random_secret_string_here/${SECRET}/" .env
   success ".env created with auto-generated secret."
@@ -49,7 +47,6 @@ mkdir -p "${DOWNLOADS_PATH}"
 mkdir -p "${DOWNLOADS_PATH}/watch"
 mkdir -p "${DOWNLOADS_PATH}/incomplete"
 
-# Fix permissions (run as current user)
 UID_VAL=$(id -u)
 GID_VAL=$(id -g)
 chown -R "${UID_VAL}:${GID_VAL}" "${DOWNLOADS_PATH}" 2>/dev/null || true
@@ -63,7 +60,6 @@ success "Directories ready. UID=${UID_VAL} GID=${GID_VAL}"
 # ── 4. OS-level tuning ────────────────────────────────────────
 info "Applying OS performance tuning..."
 
-# Increase open file limits
 if ! grep -q "torrentbox" /etc/security/limits.conf 2>/dev/null; then
   cat >> /etc/security/limits.conf <<'EOF'
 # TorrentBox
@@ -72,16 +68,15 @@ if ! grep -q "torrentbox" /etc/security/limits.conf 2>/dev/null; then
 EOF
 fi
 
-# Kernel network tuning
-sysctl -w net.core.rmem_max=16777216     >/dev/null 2>&1 || true
-sysctl -w net.core.wmem_max=16777216     >/dev/null 2>&1 || true
+sysctl -w net.core.rmem_max=16777216        >/dev/null 2>&1 || true
+sysctl -w net.core.wmem_max=16777216        >/dev/null 2>&1 || true
 sysctl -w net.core.netdev_max_backlog=65536 >/dev/null 2>&1 || true
 sysctl -w net.ipv4.tcp_rmem="4096 87380 16777216" >/dev/null 2>&1 || true
 sysctl -w net.ipv4.tcp_wmem="4096 65536 16777216" >/dev/null 2>&1 || true
 success "OS tuning applied."
 
 # ── 5. Pull images ────────────────────────────────────────────
-info "Pulling Docker images (this may take a minute)..."
+info "Pulling Docker images..."
 docker compose pull
 success "Images pulled."
 
@@ -90,35 +85,25 @@ info "Starting TorrentBox stack..."
 docker compose up -d --remove-orphans
 success "Stack started!"
 
-# ── 7. Wait and verify ────────────────────────────────────────
-info "Waiting for services to be healthy (up to 60s)..."
-sleep 10
-
-MAX_WAIT=60
-WAITED=0
-while ! docker compose ps | grep -q "healthy"; do
-  sleep 5
-  WAITED=$((WAITED + 5))
-  if [ $WAITED -ge $MAX_WAIT ]; then
-    warn "Services took longer than expected. Check: docker compose logs"
-    break
-  fi
-done
-
+# ── 7. Get qBittorrent temporary password ─────────────────────
+info "Waiting 15s for qBittorrent to generate temp password..."
+sleep 15
 echo ""
+echo -e "${YELLOW}${BOLD}  qBittorrent first-login password:${NC}"
+docker logs qbittorrent 2>&1 | grep -i "temporary password" || \
+  echo -e "  Run: ${CYAN}docker logs qbittorrent 2>&1 | grep -i password${NC}"
+echo ""
+
+# ── 8. Print access info ──────────────────────────────────────
+VPS_IP=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo "YOUR_VPS_IP")
+
 echo -e "${GREEN}${BOLD}════════════════════════════════════════════${NC}"
 echo -e "${GREEN}${BOLD}   ✅  TorrentBox is running!               ${NC}"
 echo -e "${GREEN}${BOLD}════════════════════════════════════════════${NC}"
-
-VPS_IP=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo "YOUR_VPS_IP")
 echo ""
-echo -e "  🌊 Flood UI:     ${BOLD}http://${VPS_IP}/${NC}"
+echo -e "  🧲 qBittorrent:  ${BOLD}http://${VPS_IP}/${NC}"
 echo -e "  📁 Filebrowser:  ${BOLD}http://${VPS_IP}/files${NC}"
 echo ""
-echo -e "  First-time setup:"
-echo -e "  1. Open Flood URL → Create account"
-echo -e "  2. Client: rTorrent | Socket: ${CYAN}/run/rtorrent/rtorrent.sock${NC}"
-echo -e "  3. Download path: ${CYAN}/downloads${NC}"
-echo ""
-echo -e "  Filebrowser default login: ${CYAN}admin / admin${NC} (change on first login!)"
+echo -e "  Login: ${CYAN}admin${NC} / see temporary password above"
+echo -e "  ⚠️  Change password immediately in Settings → Web UI"
 echo ""
