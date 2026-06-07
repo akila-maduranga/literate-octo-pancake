@@ -46,11 +46,16 @@ services:
     image: filebrowser/filebrowser:latest
     container_name: filebrowser
     restart: unless-stopped
-    user: "${UID:-1000}:${GID:-1000}"
+    # Run as root so it can write its DB — filebrowser has its own auth
+    command: >
+      --database /database/filebrowser.db
+      --root /srv
+      --baseurl /files
+      --log stdout
+      --port 80
     volumes:
       - downloads:/srv
-      - ./filebrowser/filebrowser.json:/.filebrowser.json:ro
-      - filebrowser-db:/database
+      - ./data/filebrowser:/database
     networks:
       - torrentbox
 
@@ -79,8 +84,6 @@ volumes:
       type: none
       o: bind
       device: ${DOWNLOADS_PATH:-./data/downloads}
-  filebrowser-db:
-    driver: local
 
 # ── Network ───────────────────────────────────────────────────────
 networks:

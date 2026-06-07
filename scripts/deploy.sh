@@ -42,10 +42,11 @@ fi
 DOWNLOADS_PATH=$(grep '^DOWNLOADS_PATH' .env | cut -d= -f2 | tr -d ' ')
 DOWNLOADS_PATH="${DOWNLOADS_PATH:-./data/downloads}"
 
-info "Creating directories: ${DOWNLOADS_PATH}, ${DOWNLOADS_PATH}/watch, ${DOWNLOADS_PATH}/incomplete"
+info "Creating directories..."
 mkdir -p "${DOWNLOADS_PATH}"
 mkdir -p "${DOWNLOADS_PATH}/watch"
 mkdir -p "${DOWNLOADS_PATH}/incomplete"
+mkdir -p ./data/filebrowser
 
 UID_VAL=$(id -u)
 GID_VAL=$(id -g)
