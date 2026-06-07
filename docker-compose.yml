@@ -20,7 +20,7 @@ services:
       TORRENTING_PORT: "6881"
     volumes:
       - qbit-config:/config
-      - downloads:/downloads
+      - ${DOWNLOADS_PATH:-./data/downloads}:/downloads
     ports:
       - "6881:6881/tcp"
       - "6881:6881/udp"
@@ -60,7 +60,7 @@ services:
       - "--port"
       - "80"
     volumes:
-      - downloads:/srv
+      - ${DOWNLOADS_PATH:-./data/downloads}:/srv
       - ./data/filebrowser:/database
     networks:
       - torrentbox
@@ -93,12 +93,6 @@ services:
 volumes:
   qbit-config:
     driver: local
-  downloads:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${DOWNLOADS_PATH:-./data/downloads}
 
 # ── Network ───────────────────────────────────────────────────────
 networks:
