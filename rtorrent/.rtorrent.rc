@@ -1,5 +1,10 @@
 # ================================================================
 # rTorrent Configuration — Optimized for 12GB RAM VPS
+# Used by: crazymax/rtorrent-flood image
+# Mount: ./rtorrent/.rtorrent.rc → /data/.rtorrent.rc (optional override)
+# ================================================================
+# NOTE: The crazymax image manages the SCGI socket internally.
+# You do NOT need to set network.scgi.open_local here.
 # ================================================================
 
 # --- Network Ports ---
@@ -22,47 +27,38 @@ throttle.max_peers.seed.set     = 100
 throttle.min_peers.seed.set     = 25
 throttle.max_uploads.global.set = 500
 
-# --- Slots per torrent ---
-throttle.max_downloads.div.set  = 1
-throttle.max_uploads.div.set    = 1
-
 # ================================================================
 # Memory — 6144M (6GB) of 12GB for piece cache
-# This is the #1 factor for download speed on a VPS
+# This is the single biggest factor for download speed
 # ================================================================
 pieces.memory.max.set           = 6144M
 pieces.preload.type.set         = 2
 pieces.preload.min_size.set     = 262144
 pieces.preload.min_rate.set     = 5000
 
+# --- Hashing ---
+pieces.hash.on_completion.set   = yes
+
 # --- I/O ---
 system.umask.set                = 0022
-pieces.hash.on_completion.set   = yes
 
 # --- Directories ---
 directory.default.set           = /downloads
-session.path.set                = /config/session
+session.path.set                = /data/session
 
 # --- Protocol ---
 protocol.encryption.set         = allow_incoming,try_outgoing,enable_retry
 
-# --- DHT (improves peer discovery dramatically) ---
+# --- DHT (dramatically improves peer discovery) ---
 dht.mode.set                    = auto
 dht.port.set                    = 6881
 
-# --- PEX (Peer Exchange) ---
+# --- Peer Exchange ---
 protocol.pex.set                = yes
 
 # --- UDP Trackers ---
 trackers.use_udp.set            = yes
-
-# --- Scrape ---
 trackers.delay_scrape.set       = yes
 
-# --- Watch Directory (auto-add .torrent files) ---
+# --- Watch Directory (auto-add .torrent files dropped here) ---
 schedule2 = watch_directory,5,5,"load.start=/downloads/watch/*.torrent"
-
-# ================================================================
-# SCGI Unix Socket — Flood connects here
-# ================================================================
-network.scgi.open_local         = /run/rtorrent/rtorrent.sock
