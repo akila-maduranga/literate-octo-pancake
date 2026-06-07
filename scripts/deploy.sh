@@ -47,6 +47,7 @@ mkdir -p "${DOWNLOADS_PATH}"
 mkdir -p "${DOWNLOADS_PATH}/watch"
 mkdir -p "${DOWNLOADS_PATH}/incomplete"
 mkdir -p ./data/filebrowser
+chmod 777 ./data/filebrowser   # filebrowser container user needs write access
 
 UID_VAL=$(id -u)
 GID_VAL=$(id -g)

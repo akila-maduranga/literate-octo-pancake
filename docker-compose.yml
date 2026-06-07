@@ -44,14 +44,16 @@ services:
     image: filebrowser/filebrowser:latest
     container_name: filebrowser
     restart: unless-stopped
-    # YAML list format — each flag is a separate element (NOT folded string)
-    # Run as root so it can write its SQLite DB; filebrowser has its own login auth
+    # Force root: the image bakes in a non-root USER; bind-mount dirs
+    # are root-owned on the host so the non-root user gets EACCES.
+    # filebrowser has its own login auth, running as root is safe here.
+    user: "0:0"
     command:
       - "--database"
       - "/database/filebrowser.db"
       - "--root"
       - "/srv"
-      - "--baseurl"
+      - "--baseURL"          # note: --baseurl is deprecated
       - "/files"
       - "--log"
       - "stdout"
