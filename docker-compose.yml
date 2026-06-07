@@ -1,0 +1,125 @@
+version: "3.8"
+
+# ================================================================
+# TorrentBox — Blazing Fast VPS Torrent Stack
+# Services: rTorrent · Flood UI · Filebrowser · Nginx
+# ================================================================
+
+services:
+
+  # ── Torrent Engine ────────────────────────────────────────────
+  rtorrent:
+    image: jesec/rtorrent:master
+    container_name: rtorrent
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      HOME: /config
+    volumes:
+      - ./rtorrent/.rtorrent.rc:/config/.rtorrent.rc:ro
+      - rtorrent-config:/config
+      - downloads:/downloads
+      - rtorrent-socket:/run/rtorrent
+    ports:
+      - "6881:6881/tcp"
+      - "6881:6881/udp"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - torrentbox
+    healthcheck:
+      test: ["CMD-SHELL", "test -S /run/rtorrent/rtorrent.sock || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # ── Web UI ────────────────────────────────────────────────────
+  flood:
+    image: jesec/flood:master
+    container_name: flood
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    command:
+      - --port=3000
+      - --host=0.0.0.0
+      - --secret=${FLOOD_SECRET}
+      - --allowedpath=/downloads
+      - --noauth=false
+    environment:
+      HOME: /config
+    volumes:
+      - flood-db:/config
+      - downloads:/downloads
+      - rtorrent-socket:/run/rtorrent
+    depends_on:
+      rtorrent:
+        condition: service_healthy
+    networks:
+      - torrentbox
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/auth/verify || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── File Browser ──────────────────────────────────────────────
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      - downloads:/srv
+      - ./filebrowser/filebrowser.json:/.filebrowser.json:ro
+      - filebrowser-db:/database
+    networks:
+      - torrentbox
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/files/health || exit 0"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Reverse Proxy ─────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      flood:
+        condition: service_healthy
+    networks:
+      - torrentbox
+
+# ── Volumes ───────────────────────────────────────────────────────
+volumes:
+  rtorrent-config:
+    driver: local
+  rtorrent-socket:
+    driver: local
+  downloads:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DOWNLOADS_PATH:-./data/downloads}
+  flood-db:
+    driver: local
+  filebrowser-db:
+    driver: local
+
+# ── Network ───────────────────────────────────────────────────────
+networks:
+  torrentbox:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

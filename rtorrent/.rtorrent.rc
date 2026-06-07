@@ -1,0 +1,68 @@
+# ================================================================
+# rTorrent Configuration — Optimized for 12GB RAM VPS
+# ================================================================
+
+# --- Network Ports ---
+network.port_range.set          = 6881-6881
+network.port_random.set         = no
+
+# --- File Descriptor Limits (match OS ulimit) ---
+network.max_open_files.set      = 65536
+network.max_open_sockets.set    = 65536
+
+# --- Bandwidth (0 = unlimited) ---
+throttle.global_down.max_rate.set = 0
+throttle.global_up.max_rate.set   = 0
+throttle.max_uploads.set          = 0
+
+# --- Peer Limits (tuned for 12GB RAM) ---
+throttle.max_peers.normal.set   = 200
+throttle.min_peers.normal.set   = 50
+throttle.max_peers.seed.set     = 100
+throttle.min_peers.seed.set     = 25
+throttle.max_uploads.global.set = 500
+
+# --- Slots per torrent ---
+throttle.max_downloads.div.set  = 1
+throttle.max_uploads.div.set    = 1
+
+# ================================================================
+# Memory — 6144M (6GB) of 12GB for piece cache
+# This is the #1 factor for download speed on a VPS
+# ================================================================
+pieces.memory.max.set           = 6144M
+pieces.preload.type.set         = 2
+pieces.preload.min_size.set     = 262144
+pieces.preload.min_rate.set     = 5000
+
+# --- I/O ---
+system.umask.set                = 0022
+pieces.hash.on_completion.set   = yes
+
+# --- Directories ---
+directory.default.set           = /downloads
+session.path.set                = /config/session
+
+# --- Protocol ---
+protocol.encryption.set         = allow_incoming,try_outgoing,enable_retry
+
+# --- DHT (improves peer discovery dramatically) ---
+dht.mode.set                    = auto
+dht.port.set                    = 6881
+
+# --- PEX (Peer Exchange) ---
+protocol.pex.set                = yes
+
+# --- UDP Trackers ---
+trackers.use_udp.set            = yes
+
+# --- Scrape ---
+trackers.delay_scrape.set       = yes
+
+# --- Watch Directory (auto-add .torrent files) ---
+schedule2 = watch_directory,5,5,"load.start=/downloads/watch/*.torrent"
+
+# ================================================================
+# SCGI Unix Socket — Flood connects here
+# ================================================================
+network.scgi.open_local         = /run/rtorrent/rtorrent.sock
